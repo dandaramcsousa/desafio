@@ -1,0 +1,48 @@
+---
+title: "Desafio Playax - 1"
+author: "Dandara Sousa"
+output: html_notebook
+---
+
+```{r}
+#install.packages("tidyverse")
+#install.packages("factoextra")
+library(tidyverse)
+library(factoextra)
+library(cluster)
+```
+
+Informações sobre os dados:
+* __created_at__: quando o dado foi detectado
+* __audio_source_id__: o id da rádio
+* __track_id__: o id da música
+
+```{r}
+data <- read_csv("data/detections.csv.gz") %>% na.omit()
+```
+
+```{r}
+set.seed(123)
+
+data <- data %>% select(audio_source_id, track_id)
+data_sample <- data[sample(nrow(data), 300000), ]
+
+data_ <- scale(data)
+```
+
+
+```{r}
+res.km <- eclust(data_sample, "kmeans", nstart = 25)
+```
+
+
+```{r}
+res.dist <- get_dist(data, stand = TRUE, method = "pearson")
+fviz_dist(res.dist,
+   gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+```
+
+```{r}
+fviz_nbclust(data, kmeans, method = "gap_stat")
+```
+
