@@ -1,48 +1,78 @@
 ---
-title: "Desafio Playax - 1"
-author: "Dandara Sousa"
+title: "R Notebook"
 output: html_notebook
 ---
 
-```{r}
-#install.packages("tidyverse")
-#install.packages("factoextra")
-library(tidyverse)
-library(factoextra)
+```{r, message=FALSE}
+require(GGally, quietly = TRUE)
+require(reshape2, quietly = TRUE)
+require(tidyverse, quietly = TRUE, warn.conflicts = FALSE)
+library(ggfortify)
 library(cluster)
+library(ggdendro)
+library(broom)
+theme_set(theme_bw())
 ```
-
-Informações sobre os dados:
-* __created_at__: quando o dado foi detectado
-* __audio_source_id__: o id da rádio
-* __track_id__: o id da música
 
 ```{r}
 data <- read_csv("data/detections.csv.gz") %>% na.omit()
-```
-
-```{r}
-set.seed(123)
-
 data <- data %>% select(audio_source_id, track_id)
-data_sample <- data[sample(nrow(data), 300000), ]
-
-data_ <- scale(data)
+#data %>% ggpairs()
 ```
-
-
 ```{r}
-res.km <- eclust(data_sample, "kmeans", nstart = 25)
-```
-
-
-```{r}
-res.dist <- get_dist(data, stand = TRUE, method = "pearson")
-fviz_dist(res.dist,
-   gradient = list(low = "#00AFBB", mid = "white", high = "#FC4E07"))
+summary(data)
 ```
 
 ```{r}
-fviz_nbclust(data, kmeans, method = "gap_stat")
+data_sample <- data[sample(nrow(data), 15000), ]
+
+data.scaled <- scale(data_sample)
+summary(data.scaled)
+```
+
+```{r}
+dists <- data.scaled %>% 
+    as.data.frame() %>% 
+    dist(method = "euclidean")
+hc = hclust(dists, method = "ward.D")
+
+plot(hc, cex = .6)
+plot(hc, hang = -1)
+n_clusters = 10
+rect.hclust(hc, k=n_clusters)
+```
+
+```{r}
+
+data_sample <- data_sample %>% 
+    mutate(cluster = hc %>% 
+               cutree(k = n_clusters) %>% 
+               as.character())
+
+data.scaled <- data.scaled %>%
+  mutate(cluster = hc %>% 
+               cutree(k = n_clusters) %>% 
+               as.character())
+
+km = data_sample %>% 
+    kmeans(centers = n_clusters, nstart = 20)
+```
+
+```{r}
+data.sample.km.long = km %>% 
+    augment(data_sample) %>% # Adiciona o resultado de km 
+                            # aos dados originais dw2.scaled em 
+                            # uma variável chamada .cluster
+    gather(key = "variável", 
+           value = "valor",
+           -track_id, - cluster) # = move para long todas as 
+                                            # variávies menos repository_language 
+                                            # e .cluster
+
+data.sample.km.long %>% 
+    ggplot(aes(x = `variável`, y = valor, group = track_id, colour = cluster)) + 
+    #geom_point(alpha = 0.2) + 
+    geom_line(alpha = .5) + 
+    facet_wrap(~ cluster) 
 ```
 
