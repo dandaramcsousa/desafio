@@ -24,11 +24,12 @@ summary(data)
 ```
 
 ```{r}
-data_sample <- data[sample(nrow(data), 15000), ]
+data_sample <- data[sample(nrow(data), 30000), ]
 
-data.scaled <- scale(data_sample)
+data.scaled <- data_sample %>%  mutate_each(funs(as.vector(scale(.))))
 summary(data.scaled)
 ```
+
 
 ```{r}
 dists <- data.scaled %>% 
@@ -54,9 +55,25 @@ data.scaled <- data.scaled %>%
                cutree(k = n_clusters) %>% 
                as.character())
 
-km = data_sample %>% 
-    kmeans(centers = n_clusters, nstart = 20)
 ```
+
+```{r}
+km = data_sample %>% 
+  select(audio_source_id, track_id) %>%
+  kmeans(centers = n_clusters, nstart = 20)
+
+agrupado = km %>% 
+  augment(data_sample)
+
+agrupado %>%
+  ggplot(aes(audio_source_id,track_id, color = .cluster)) +
+  geom_point(size = 2) + 
+    scale_y_log10()
+```
+
+
+
+
 
 ```{r}
 data.sample.km.long = km %>% 
@@ -65,7 +82,7 @@ data.sample.km.long = km %>%
                             # uma variável chamada .cluster
     gather(key = "variável", 
            value = "valor",
-           -track_id, - cluster) # = move para long todas as 
+           -track_id, -cluster) # = move para long todas as 
                                             # variávies menos repository_language 
                                             # e .cluster
 
