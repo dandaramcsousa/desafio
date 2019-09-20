@@ -19,17 +19,23 @@ data <- read_csv("data/detections.csv.gz") %>% na.omit()
 data <- data %>% select(audio_source_id, track_id)
 #data %>% ggpairs()
 ```
+
 ```{r}
 summary(data)
 ```
 
 ```{r}
-data_sample <- data[sample(nrow(data), 30000), ]
+data_sample <- data[sample(nrow(data), 20000), ]
 
 data.scaled <- data_sample %>%  mutate_each(funs(as.vector(scale(.))))
 summary(data.scaled)
 ```
 
+```{r}
+library(factoextra)
+fviz_nbclust(data_sample, kmeans, method = "gap_stat")
+
+```
 
 ```{r}
 dists <- data.scaled %>% 
@@ -39,7 +45,7 @@ hc = hclust(dists, method = "ward.D")
 
 plot(hc, cex = .6)
 plot(hc, hang = -1)
-n_clusters = 10
+n_clusters = 3
 rect.hclust(hc, k=n_clusters)
 ```
 
@@ -57,6 +63,8 @@ data.scaled <- data.scaled %>%
 
 ```
 
+
+
 ```{r}
 km = data_sample %>% 
   select(audio_source_id, track_id) %>%
@@ -67,29 +75,32 @@ agrupado = km %>%
 
 agrupado %>%
   ggplot(aes(audio_source_id,track_id, color = .cluster)) +
-  geom_point(size = 2) + 
-    scale_y_log10()
+  geom_point(size = .5) + 
+    scale_x_log10()
 ```
 
 
-
-
+```{r}
+agrupado %>%
+  ggplot(aes(track_id,audio_source_id, color = .cluster)) +
+  geom_point(size = .5) + 
+    scale_y_log10()
+```
 
 ```{r}
-data.sample.km.long = km %>% 
-    augment(data_sample) %>% # Adiciona o resultado de km 
-                            # aos dados originais dw2.scaled em 
-                            # uma variável chamada .cluster
-    gather(key = "variável", 
-           value = "valor",
-           -track_id, -cluster) # = move para long todas as 
-                                            # variávies menos repository_language 
-                                            # e .cluster
+data_sample = data_sample %>%
+  select(-cluster)
 
-data.sample.km.long %>% 
-    ggplot(aes(x = `variável`, y = valor, group = track_id, colour = cluster)) + 
-    #geom_point(alpha = 0.2) + 
-    geom_line(alpha = .5) + 
-    facet_wrap(~ cluster) 
+fviz_cluster(km, data = data_sample,
+             ellipse.type = "convex",
+             palette = "jco",
+             ggtheme = theme_minimal())
+
+fviz_cluster(km, data_sample)
+```
+
+```{r}
+res.km <- eclust(data_sample, "kmeans", nstart = 25)
+fviz_silhouette(res.km)
 ```
 
